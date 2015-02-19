@@ -49,12 +49,15 @@ void MyWindow::draw() {
     glVertex3d(radius * cos(angle), radius * sin(angle), 0.0);
   }
   glEnd();
-  // Draw a line
+  // Draw lines through each vertex
+  // Still based on the assumption that all the vertices are operating under distance-based constraints
   glBegin(GL_LINES);
-  Vector3d p1 = mWorld->getParticle(0)->mPosition;
-  Vector3d p2 = mWorld->getParticle(1)->mPosition;
-  glVertex3f(p1[0], p1[1], p1[2]);
-  glVertex3f(p2[0], p2[1], p2[2]);
+  for (int i = 0; i < mWorld->getNumParticles() - 1; i++) {
+	  Vector3d p1 = mWorld->getParticle(i)->mPosition;
+	  Vector3d p2 = mWorld->getParticle(i+1)->mPosition;
+	  glVertex3f(p1[0], p1[1], p1[2]);
+	  glVertex3f(p2[0], p2[1], p2[2]);
+  }
   glEnd();
   mRI->popMatrix();
   glEnable(GL_LIGHTING);
@@ -70,30 +73,39 @@ void MyWindow::draw() {
 }
 
 void MyWindow::keyboard(unsigned char key, int x, int y) {
-  switch(key){
-  case ' ': // Use space key to play or stop the motion
-    mPlaying = !mPlaying;
-    if(mPlaying)
-      glutTimerFunc( mDisplayTimeout, refreshTimer, 0);
-    break;
-  default:
-    Win3D::keyboard(key,x,y);
-  }
-  glutPostRedisplay();
+	switch (key){
+	case ' ': // Use space key to play or stop the motion
+		mPlaying = !mPlaying;
+		if (mPlaying)
+			glutTimerFunc(mDisplayTimeout, refreshTimer, 0);
+		break;
+	case 'r':
+		mWorld = new MyWorld(1);
+		mFrame = 0;
+		break;
+	default:
+		Win3D::keyboard(key, x, y);
+	}
+	glutPostRedisplay();
 }
 
 void MyWindow::click(int button, int state, int x, int y) {
-  mMouseDown = !mMouseDown;
-  if(mMouseDown){
-    if (button == GLUT_LEFT_BUTTON)
-      std::cout << "Left Click" << std::endl;
-    else if (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON)
-      std::cout << "RIGHT Click" << std::endl;
-        
-    mMouseX = x;
-    mMouseY = y;
-  }
-  glutPostRedisplay();
+	mMouseDown = !mMouseDown;
+	if (mMouseDown){
+		if (button == GLUT_LEFT_BUTTON) {
+			std::cout << "Left Click" << std::endl;
+			double xx = (x * 1.0 / GlutWindow::mWinWidth - 0.5) * (0.2 / 0.1875);
+			double yy = (0.5 - y * 1.0 / GlutWindow::mWinHeight) * (0.2 / 0.25);
+			mWorld->addParticle(Eigen::Vector3d(xx, yy, 0));
+		}
+		else if (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON) {
+			std::cout << "RIGHT Click" << std::endl;
+		}
+
+		mMouseX = x;
+		mMouseY = y;
+	}
+	glutPostRedisplay();
 }
 
 void MyWindow::drag(int x, int y) {
