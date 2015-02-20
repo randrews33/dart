@@ -19,6 +19,8 @@ public:
 		mVelocity.setZero();
 		mAccumulatedForce.setZero();
 		mColor << 0.9, 0.2, 0.2, 1.0;
+
+		mConstrained = false;
 	}
 	virtual ~Particle() {}
 
@@ -41,6 +43,54 @@ public:
 	Eigen::Vector3d mAccumulatedForce;
 
 	Eigen::Vector4d mColor;
+
+	bool mConstrained;			// If this particle is constrained to any other particles ONLY
+};
+
+class Constraint {
+public:
+	typedef enum CONSTRAINT_TYPE {
+		CONSTRAINT_CIRCLE,
+		CONSTRAINT_DISTANCE,
+		CONSTRAINT_VECTOR
+	} ConstraintType;
+
+	const Particle * p;
+	ConstraintType type;
+
+	Constraint(Particle *p_in) : p(p_in) {}
+	Constraint() {}
+
+	virtual double C() const = 0;
+	virtual double dC() const = 0;
+};
+
+class CircleConstraint : public Constraint {
+public:
+	double mRadius;
+	Eigen::Vector3d mCirclePos;
+
+	CircleConstraint(Particle *p_in, double radius, Eigen::Vector3d position) : Constraint(p_in) {
+		this->mRadius = radius;
+		this->mCirclePos = position;
+	}
+
+	virtual double C() const override;
+	virtual double dC() const override;
+};
+
+class DistanceConstraint : public Constraint {
+public:
+	Particle *p_other;
+	double distance;
+
+	DistanceConstraint(Particle *p_in, Particle *p_other) : Constraint(p_in) {
+		this->p_other = p_other;
+		this->distance = sqrt((p_in->mPosition - p_other->mPosition).dot(p_in->mPosition - p_other->mPosition));
+	}
+
+	virtual double C() const override;
+	virtual double dC() const override;
 };
 
 #endif

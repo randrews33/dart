@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
   MyWindow window;
 
   // Create a world with one particle
-  MyWorld *world = new MyWorld(1);
+  MyWorld *world = new MyWorld();
 
   // Link the world to the window and start running the glut event loop
   std::cout << "space bar: simulation on/off" << std::endl;

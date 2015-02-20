@@ -4,18 +4,19 @@
 #include <vector>
 #include <iostream>
 #include <Eigen/Dense>
+#include <memory>
+//#include "Constriants.h"
 
 class Particle;
+class Constraint;
 
 class MyWorld {
 public:
-	MyWorld(int _numParticles);
+	MyWorld();
 
 	virtual ~MyWorld();
 	
-	int getNumParticles() {
-		return mParticles.size();
-	}
+	int getNumParticles();
 
 	Particle* getParticle(int _index) {
 		return mParticles[_index];
@@ -26,12 +27,16 @@ public:
 	// TODO: your simulation code goes here
 	void simulate();
 	void updateForces();
+	void resetForces();
 	void updateConstraintParams();
 	void calculateConstraints();
 	void applyConstraints();
 
+	void addConstraint(Constraint* constraint);
+
 protected:
 	std::vector<Particle*> mParticles;
+	const int mMaxParticles = 5;
 
 	Eigen::VectorXd q;
 	Eigen::VectorXd dq;
@@ -50,7 +55,10 @@ protected:
 	// Temporary, for storing distance values of distance-based constraints
 	// First value will correspond to second particle, because current assumption is that the
 	// first particle is NOT operating under a  distance-based but circle-based constraint
-	std::vector<float> distances;
+	std::vector<double> distances;
+
+	std::vector<Constraint*> constraints;
+	std::vector< std::vector< int >> constraintTable;
 
 private:
 	void initMats();
@@ -59,7 +67,7 @@ private:
 		//std::cout << "q:" << std::endl << q << std::endl << "-----------" << std::endl;
 		//std::cout << "dq:" << std::endl << dq << std::endl << "-----------" << std::endl;
 		//std::cout << "Q:" << std::endl << Q << std::endl << "-----------" << std::endl;
-		std::cout << "W:" << std::endl << W << std::endl << "-----------" << std::endl;
+		//std::cout << "W:" << std::endl << W << std::endl << "-----------" << std::endl;
 		std::cout << "J:" << std::endl << J << std::endl << "-----------" << std::endl;
 		std::cout << "dJ:" << std::endl << dJ << std::endl << "-----------" << std::endl;
 	}

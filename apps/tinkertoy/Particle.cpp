@@ -1,5 +1,6 @@
 #include "Particle.h"
 #include "dart/renderer/RenderInterface.h"
+#include <iostream>
 
 using namespace Eigen;
 
@@ -36,4 +37,25 @@ void Particle::Euler(float tStep) {
 void Particle::RK4(float tStep) {
 	mPosition += tStep * (mVelocity + (mAccumulatedForce / mMass) * tStep / 2);
 	mVelocity += tStep * (mAccumulatedForce / mMass);
+}
+
+////////////////////////////////////////
+// Constraints class
+////////////////////////////////////////
+double CircleConstraint::C() const {
+	return 0.5 * p->mPosition.dot(p->mPosition) - 0.5 * mRadius * mRadius;	// NEEDS TO TAKE INTO ACCOUNT THE POSITION OF THE CIRCLE
+}
+
+double CircleConstraint::dC() const {
+	return p->mPosition.dot(p->mVelocity);
+}
+
+double DistanceConstraint::C() const {
+	return 0.5 * p->mPosition.dot(p->mPosition) - p->mPosition.dot(p_other->mPosition) +
+		0.5 * p_other->mPosition.dot(p_other->mPosition) - 0.5 * distance * distance;
+}
+
+double DistanceConstraint::dC() const {
+	return p->mPosition.dot(p->mVelocity - p_other->mVelocity) +
+		p_other->mPosition.dot(p_other->mVelocity - p->mVelocity);
 }

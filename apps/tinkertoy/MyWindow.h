@@ -2,8 +2,10 @@
 #define _MYWINDOW_
 
 #include "dart/gui/SimWindow.h"
+#include "Particle.h"
 
 class MyWorld;
+class Particle;
 
 class MyWindow : public dart::gui::SimWindow {
  public:
@@ -16,6 +18,7 @@ class MyWindow : public dart::gui::SimWindow {
   virtual void keyboard(unsigned char key, int x, int y);
   virtual void click(int button, int state, int x, int y);
   virtual void drag(int x, int y);
+  virtual void move(int x, int y);
     
   MyWorld* getWorld() {
     return mWorld;
@@ -25,11 +28,38 @@ class MyWindow : public dart::gui::SimWindow {
     mWorld = _world;
   }
 
- protected:
+protected:
+	typedef enum WINDOW_MODE {
+		MODE_SELECT,
+		MODE_INSERT,
+		MODE_MOVE,
+		MODE_SPRING,
+		NUM_MODES
+	} WinMode;
+
   bool mPlaying;
   int mFrame;
+
+  Particle* mSelected;
+  double mSelectDist;
     
   MyWorld *mWorld;
+
+  WinMode mWinMode;
+  bool mShowMenu;
+
+  // Keys for user input options
+  char mKeyMenu = 'm';
+  char mKeySelect = 's';
+  char mKeyInsert = 'i';
+  char mKeySpring = 'p';
+  char mKeyMove = 'M';
+
+  virtual Particle* getClosest(int x, int y);
+  virtual void selectClosest(int x, int y);
+  virtual void deselectClosest();
+  virtual void applyForce(Particle *p, Eigen::Vector3d force);
+  virtual void showMenu(float x, float y);
 };
 
 #endif

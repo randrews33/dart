@@ -6,22 +6,30 @@
 
 using namespace Eigen;
 
-MyWorld::MyWorld(int _numParticles) {
+MyWorld::MyWorld() {
 	// Create particles
-	for (int i = 0; i < _numParticles; i++) {
-		Particle *p1 = new Particle();
-		Particle *p2 = new Particle();
-		mParticles.push_back(p1);
-		mParticles.push_back(p2);
-	}
+	Particle *p1 = new Particle();
+	Particle *p2 = new Particle();
+
+	// First two particles are constrained to each other, so set their flags accordingly
+	p1->mConstrained = true;
+	p2->mConstrained = true;
+
+	mParticles.push_back(p1);
+	mParticles.push_back(p2);
 
 	// Init particle position
 	mParticles[0]->mPosition[0] = 0.2;
 	mParticles[1]->mPosition[0] = 0.2;
 	mParticles[1]->mPosition[1] = -0.1;
 
+	// DEBUG
+	std::cout << "Particle vector size: " << mParticles.size() << std::endl;
+
 	// Value here is based on initializations above
-	distances.push_back(0.1);
+	double distance = sqrt((mParticles[1]->mPosition - mParticles[0]->mPosition).dot(
+		mParticles[1]->mPosition - mParticles[0]->mPosition));
+	distances.push_back(distance);
 
 	J.resize(2, 6);
 	J.setZero();
@@ -30,12 +38,7 @@ MyWorld::MyWorld(int _numParticles) {
 	dJ.setZero();
 
 	q.resize(6, 1);
-	q.block<3, 1>(0, 0) = mParticles[0]->mPosition;
-	q.block<3, 1>(3, 0) = mParticles[1]->mPosition;
-
 	dq.resize(6, 1);
-	dq.block<3, 1>(0, 0) = mParticles[0]->mVelocity;
-	dq.block<3, 1>(3, 0) = mParticles[1]->mVelocity;
 	
 	W.resize(6, 6);
 	W.setZero();
@@ -45,26 +48,22 @@ MyWorld::MyWorld(int _numParticles) {
 	Q.resize(6, 1);
 	lambda.resize(2);
 	Qh.resize(6, 1);
-
 	C.resize(2, 1);
-	C(0, 0) = 0.5 * mParticles[0]->mPosition.dot(mParticles[0]->mPosition) - 0.5 * 0.2 * 0.2;
-	C(1, 0) = 0.5 * mParticles[0]->mPosition.dot(mParticles[0]->mPosition) - mParticles[0]->mPosition.dot(mParticles[1]->mPosition) +
-		0.5 * mParticles[1]->mPosition.dot(mParticles[1]->mPosition) - 0.5 * 0.1 * 0.1;
-
 	dC.resize(2, 1);
-	dC(0, 0) = mParticles[0]->mPosition.dot(mParticles[0]->mVelocity);
-	dC(1, 0) = mParticles[0]->mPosition.dot(mParticles[0]->mVelocity) -
-		mParticles[0]->mPosition.dot(mParticles[1]->mVelocity) -
-		mParticles[1]->mPosition.dot(mParticles[0]->mVelocity) +
-		mParticles[1]->mPosition.dot(mParticles[1]->mVelocity);
 
 	nConstraints = 2;
+	constraints.push_back(new CircleConstraint(mParticles[0], 0.2, Vector3d(0.0, 0.0, 0.0)));
+	constraints.push_back(new DistanceConstraint(mParticles[1], mParticles[0]));
 }
 
 MyWorld::~MyWorld() {
 	for (int i = 0; i < mParticles.size(); i++)
 		delete mParticles[i];
 	mParticles.clear();
+}
+
+int MyWorld::getNumParticles() {
+	return mParticles.size();
 }
 
 void MyWorld::addParticle(Vector3d position) {
@@ -75,36 +74,23 @@ void MyWorld::addParticle(Vector3d position) {
 
 	// Since current assumption is that each new particle will operate under a distance-based constraint from the previous
 	// particle, push its distance from the previous particle into the distances vector
-	float distance = sqrt((mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition).dot(
+	p->mConstrained = true;
+	double distance = sqrt((mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition).dot(
 		mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition));
 	distances.push_back(distance);
 
 	// Resize & initialize constraint parameter matrices
 	q.resize(q.rows() + 3, 1);
-	//q.block<3, 1>(q.rows() - 3, 0) = position;
-
 	dq.resize(dq.rows() + 3, 1);
-	//dq.block<3, 1>(dq.rows() - 3, 0) = Vector3d::Zero();
-
 	Q.resize(Q.rows() + 3);
-	//Q.block<3, 1>(Q.rows() - 3, 0) = Vector3d::Zero();
-
-	// For this initialization of W, just going to assume that newly added elements are initialized to 0.  Will verify
-	// EDIT: Newly added elements ARE NOT INITIALIZED.  In fact, ALL ELEMENTS LOSE THEIR VALUES AND MUST BE RE-INITIALIZED
 	W.resize(mParticles.size() * 3, mParticles.size() * 3);
-	//W.block<3, 3>(mParticles.size() * 3 - 3, mParticles.size() * 3 - 3) = Matrix3d::Identity() / mParticles[mParticles.size() - 1]->mMass;
 
 	// Currently under assumption that any new particle will have a distance-based constraint on the previous particle in the array
 	C.resize(C.rows() + 1, 1);
 	dC.resize(dC.rows() + 1, 1);
 
 	J.resize(J.rows() + 1, J.cols() + 3);
-	//J.block<1, 3>(J.rows() - 1, J.cols() - 3) = Vector3d::Zero();
-	//for (int i = 0; i < nConstraints - 1; i++) J.block<1, 3>(i, mParticles.size() * 3 - 3) = Vector3d::Zero();
-
 	dJ.resize(dJ.rows() + 1, dJ.cols() + 3);
-	//dJ.block<1, 3>(dJ.rows() - 1, dJ.cols() - 3) = Vector3d::Zero();
-	//for (int i = 0; i < nConstraints - 1; i++) dJ.block<1, 3>(i, mParticles.size() * 3 - 3) = Vector3d::Zero();
 
 	lambda.resize(lambda.rows() + 1, 1);
 	Qh.resize(Qh.rows() + 3, 1);
@@ -112,6 +98,10 @@ void MyWorld::addParticle(Vector3d position) {
 	nConstraints++;
 
 	initMats();
+}
+
+void MyWorld::addConstraint(Constraint* constraint) {
+
 }
 
 void MyWorld::simulate() {
@@ -129,12 +119,18 @@ void MyWorld::simulate() {
 	for (int i = 0; i < mParticles.size(); i++) {
 		mParticles[i]->update(tStep);
 	}
+	resetForces();
 }
 
 void MyWorld::updateForces() {
 	for (int i = 0; i < mParticles.size(); i++) {
-		mParticles[i]->mAccumulatedForce.setZero();
 		mParticles[i]->mAccumulatedForce += Vector3d(0, -1, 0) * GRAVITY;
+	}
+}
+
+void MyWorld::resetForces() {
+	for (int i = 0; i < mParticles.size(); i++) {
+		mParticles[i]->mAccumulatedForce.setZero();
 	}
 }
 
@@ -142,8 +138,10 @@ void MyWorld::updateConstraintParams() {
 	// Operate under assumption that first particle is the only one operating under a circle constraint
 	// It will also be assumed that the rest of the particles will be constrained to a specific distance from the previous one
 
-	C(0, 0) = 0.5 * mParticles[0]->mPosition.dot(mParticles[0]->mPosition) - 0.5 * 0.2 * 0.2;
-	dC(0, 0) = mParticles[0]->mPosition.dot(mParticles[0]->mVelocity);
+	//C(0, 0) = 0.5 * mParticles[0]->mPosition.dot(mParticles[0]->mPosition) - 0.5 * 0.2 * 0.2;
+	//dC(0, 0) = mParticles[0]->mPosition.dot(mParticles[0]->mVelocity);
+	C(0, 0) = constraints[0]->C();
+	dC(0, 0) = constraints[0]->dC();
 
 	J.block<1, 3>(0, 0) = mParticles[0]->mPosition;
 	dJ.block<1, 3>(0, 0) = mParticles[0]->mVelocity;
@@ -171,7 +169,7 @@ void MyWorld::updateConstraintParams() {
 }
 
 void MyWorld::calculateConstraints() {
-	double ks = 10.0, kd = 1.0;
+	double ks = 20.0, kd = 5.0;
 	lambda = (J * W * J.transpose()).inverse() * (-dJ * dq - J * W * Q - ks * C - kd * dC);
 	Qh = J.transpose() * lambda;
 	//static int fCount = 0;
