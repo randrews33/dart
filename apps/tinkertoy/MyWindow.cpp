@@ -6,7 +6,8 @@
 
 #define KEY_MENU ('m')
 #define KEY_SELECT ('s')
-#define KEY_INSERT ('i')
+#define KEY_INSERT_PARTICLE ('i')
+#define KEY_ADD_CONSTRAINT ('c')
 #define KEY_SPRING ('p')
 #define KEY_MOVE ('M')
 
@@ -37,7 +38,8 @@ MyWindow::MyWindow() : SimWindow() {
   mShowMenu = false;
   mKeyMenu = KEY_MENU;
   mKeySelect = KEY_SELECT;
-  mKeyInsert = KEY_INSERT;
+  mKeyInsert = KEY_INSERT_PARTICLE;
+  mKeyAddConstraint = KEY_ADD_CONSTRAINT;
   mKeySpring = KEY_SPRING;
   mKeyMove = KEY_MOVE;
 }
@@ -110,7 +112,7 @@ void MyWindow::draw() {
   }
 
   // Show current mode
-  char modeBuffs[NUM_MODES][8] = { "SELECT", "INSERT", "MOVE", "SPRING" };
+  char modeBuffs[NUM_MODES][16] = { "SELECT", "INSERT", "ADD CONSTRAINT", "MOVE", "SPRING" };
   std::string modeString(modeBuffs[mWinMode]);
   dart::gui::drawStringOnScreen(0.85, 0.02, modeString);
 
@@ -149,9 +151,17 @@ void MyWindow::keyboard(unsigned char key, int x, int y) {
 	case KEY_SELECT:
 		mWinMode = MODE_SELECT;
 		break;
-	case KEY_INSERT:
+	case KEY_INSERT_PARTICLE:
 		deselectClosest();
-		mWinMode = MODE_INSERT;
+		mWinMode = MODE_INSERT_PARTICLE;
+		break;
+	case KEY_ADD_CONSTRAINT:
+		if (mSelected != NULL) {
+			mWinMode = MODE_ADD_CONSTRAINT;
+		}
+		else {
+			std::cout << "Select a particle first!" << std::endl;
+		}
 		break;
 	case KEY_SPRING:
 		if (mSelected != NULL) {
@@ -172,6 +182,7 @@ void MyWindow::keyboard(unsigned char key, int x, int y) {
 void MyWindow::click(int button, int state, int x, int y) {
 	mMouseDown = !mMouseDown;
 	Vector3d mouse((x * 1.0 / GlutWindow::mWinWidth - 0.5) * (0.2 / 0.1875), (0.5 - y * 1.0 / GlutWindow::mWinHeight) * (0.2 / 0.25), 0.0);
+	Particle *p;
 	if (mMouseDown){
 		if (button == GLUT_LEFT_BUTTON) {
 			std::cout << "Left Click" << std::endl;
@@ -180,8 +191,16 @@ void MyWindow::click(int button, int state, int x, int y) {
 				deselectClosest();
 				selectClosest(x, y);
 				break;
-			case MODE_INSERT:
-				//mWorld->addParticle(mouse);
+			case MODE_INSERT_PARTICLE:
+				mWorld->addParticle(mouse);
+				break;
+			case MODE_ADD_CONSTRAINT:
+				p = getClosest(x, y);
+				if (p != NULL) {
+					mWorld->addConstraint(new DistanceConstraint(mSelected, p));
+					deselectClosest();
+					mWinMode = MODE_SELECT;
+				}
 				break;
 			default:
 				break;

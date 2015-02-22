@@ -63,6 +63,8 @@ public:
 
 	virtual double C() const = 0;
 	virtual double dC() const = 0;
+	virtual Eigen::Vector3d J(Particle *pq) const = 0;
+	virtual Eigen::Vector3d dJ(Particle *pq) const = 0;
 };
 
 class CircleConstraint : public Constraint {
@@ -77,6 +79,8 @@ public:
 
 	virtual double C() const override;
 	virtual double dC() const override;
+	virtual Eigen::Vector3d J(Particle *pq) const override;
+	virtual Eigen::Vector3d dJ(Particle *pq) const override;
 };
 
 class DistanceConstraint : public Constraint {
@@ -91,6 +95,24 @@ public:
 
 	virtual double C() const override;
 	virtual double dC() const override;
+	virtual Eigen::Vector3d J(Particle *pq) const override;
+	virtual Eigen::Vector3d dJ(Particle *pq) const override;
+};
+
+class PlaneConstraint : public Constraint {
+public:
+	Eigen::Vector3d mNormal;
+	double mYPos;
+
+	PlaneConstraint(Particle *p_in, Eigen::Vector3d normal, double yPos) : Constraint(p_in) {
+		this->mNormal = normal;
+		this->mYPos = yPos;
+	}
+
+	virtual double C() const override;
+	virtual double dC() const override;
+	virtual Eigen::Vector3d J(Particle *pq) const override;
+	virtual Eigen::Vector3d dJ(Particle *pq) const override;
 };
 
 #endif

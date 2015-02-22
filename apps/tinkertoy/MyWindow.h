@@ -31,7 +31,8 @@ class MyWindow : public dart::gui::SimWindow {
 protected:
 	typedef enum WINDOW_MODE {
 		MODE_SELECT,
-		MODE_INSERT,
+		MODE_INSERT_PARTICLE,
+		MODE_ADD_CONSTRAINT,
 		MODE_MOVE,
 		MODE_SPRING,
 		NUM_MODES
@@ -49,11 +50,12 @@ protected:
   bool mShowMenu;
 
   // Keys for user input options
-  char mKeyMenu = 'm';
-  char mKeySelect = 's';
-  char mKeyInsert = 'i';
-  char mKeySpring = 'p';
-  char mKeyMove = 'M';
+  char mKeyMenu;
+  char mKeySelect;
+  char mKeyInsert;
+  char mKeyAddConstraint;
+  char mKeySpring;
+  char mKeyMove;
 
   virtual Particle* getClosest(int x, int y);
   virtual void selectClosest(int x, int y);

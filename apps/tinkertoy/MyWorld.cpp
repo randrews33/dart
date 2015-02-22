@@ -74,7 +74,6 @@ void MyWorld::addParticle(Vector3d position) {
 
 	// Since current assumption is that each new particle will operate under a distance-based constraint from the previous
 	// particle, push its distance from the previous particle into the distances vector
-	p->mConstrained = true;
 	double distance = sqrt((mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition).dot(
 		mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition));
 	distances.push_back(distance);
@@ -84,24 +83,28 @@ void MyWorld::addParticle(Vector3d position) {
 	dq.resize(dq.rows() + 3, 1);
 	Q.resize(Q.rows() + 3);
 	W.resize(mParticles.size() * 3, mParticles.size() * 3);
-
-	// Currently under assumption that any new particle will have a distance-based constraint on the previous particle in the array
-	C.resize(C.rows() + 1, 1);
-	dC.resize(dC.rows() + 1, 1);
-
-	J.resize(J.rows() + 1, J.cols() + 3);
-	dJ.resize(dJ.rows() + 1, dJ.cols() + 3);
-
-	lambda.resize(lambda.rows() + 1, 1);
 	Qh.resize(Qh.rows() + 3, 1);
 
-	nConstraints++;
+	J.resize(J.rows(), J.cols() + 3);
+	dJ.resize(dJ.rows(), dJ.cols() + 3);
+
+	// Currently under assumption that any new particle will have a distance-based constraint on the previous particle in the array
+	mParticles[mParticles.size() - 1]->mConstrained = true;
+	mParticles[mParticles.size() - 2]->mConstrained = true;
+	addConstraint(new DistanceConstraint(mParticles[mParticles.size() - 2], mParticles[mParticles.size() - 1]));
 
 	initMats();
 }
 
 void MyWorld::addConstraint(Constraint* constraint) {
+	C.resize(C.rows() + 1, 1);
+	dC.resize(dC.rows() + 1, 1);
+	J.resize(J.rows() + 1, J.cols());
+	dJ.resize(dJ.rows() + 1, dJ.cols());
+	lambda.resize(lambda.rows() + 1, 1);
 
+	constraints.push_back(constraint);
+	nConstraints++;
 }
 
 void MyWorld::simulate() {
@@ -138,25 +141,13 @@ void MyWorld::updateConstraintParams() {
 	// Operate under assumption that first particle is the only one operating under a circle constraint
 	// It will also be assumed that the rest of the particles will be constrained to a specific distance from the previous one
 
-	//C(0, 0) = 0.5 * mParticles[0]->mPosition.dot(mParticles[0]->mPosition) - 0.5 * 0.2 * 0.2;
-	//dC(0, 0) = mParticles[0]->mPosition.dot(mParticles[0]->mVelocity);
-	C(0, 0) = constraints[0]->C();
-	dC(0, 0) = constraints[0]->dC();
-
-	J.block<1, 3>(0, 0) = mParticles[0]->mPosition;
-	dJ.block<1, 3>(0, 0) = mParticles[0]->mVelocity;
-
-	for (int i = 1; i < nConstraints; i++) {
-		C(i, 0) = 0.5 * mParticles[i-1]->mPosition.dot(mParticles[i-1]->mPosition) - mParticles[i-1]->mPosition.dot(mParticles[i]->mPosition) +
-			0.5 * mParticles[i]->mPosition.dot(mParticles[i]->mPosition) - 0.5 * distances[i-1] * distances[i-1];
-		dC(i, 0) = mParticles[i-1]->mPosition.dot(mParticles[i-1]->mVelocity - mParticles[i]->mVelocity) +
-			mParticles[i]->mPosition.dot(mParticles[i]->mVelocity - mParticles[i-1]->mVelocity);
-
-		J.block<1, 3>(i, (i - 1) * 3) = mParticles[i-1]->mPosition - mParticles[i]->mPosition;
-		J.block<1, 3>(i, i * 3) = mParticles[i]->mPosition - mParticles[i-1]->mPosition;
-
-		dJ.block<1, 3>(i, (i - 1) * 3) = mParticles[i-1]->mVelocity - mParticles[i]->mVelocity;
-		dJ.block<1, 3>(i, i * 3) = mParticles[i]->mVelocity - mParticles[i-1]->mVelocity;
+	for (int i = 0; i < nConstraints; i++) {
+		for (int j = 0; j < mParticles.size(); j++) {
+			J.block<1, 3>(i, j * 3) = constraints[i]->J(mParticles[j]);
+			dJ.block<1, 3>(i, j * 3) = constraints[i]->dJ(mParticles[j]);
+		}
+		C(i, 0) = constraints[i]->C();
+		dC(i, 0) = constraints[i]->dC();
 	}
 
 	for (int i = 0; i < mParticles.size(); i++) {

@@ -42,7 +42,6 @@ protected:
 	Eigen::VectorXd dq;
 	Eigen::VectorXd Q;
 	Eigen::MatrixXd W;
-	//Eigen::ArrayXd W;
 	Eigen::VectorXd lambda;
 	Eigen::MatrixXd J;
 	Eigen::MatrixXd dJ;
