@@ -51,6 +51,7 @@ protected:
 
   // Keys for user input options
   char mKeyMenu;
+  char mKeyReset;
   char mKeySelect;
   char mKeyInsert;
   char mKeyAddConstraint;

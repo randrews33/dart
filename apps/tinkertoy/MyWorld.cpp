@@ -23,14 +23,6 @@ MyWorld::MyWorld() {
 	mParticles[1]->mPosition[0] = 0.2;
 	mParticles[1]->mPosition[1] = -0.1;
 
-	// DEBUG
-	std::cout << "Particle vector size: " << mParticles.size() << std::endl;
-
-	// Value here is based on initializations above
-	double distance = sqrt((mParticles[1]->mPosition - mParticles[0]->mPosition).dot(
-		mParticles[1]->mPosition - mParticles[0]->mPosition));
-	distances.push_back(distance);
-
 	J.resize(2, 6);
 	J.setZero();
 
@@ -54,6 +46,9 @@ MyWorld::MyWorld() {
 	nConstraints = 2;
 	constraints.push_back(new CircleConstraint(mParticles[0], 0.2, Vector3d(0.0, 0.0, 0.0)));
 	constraints.push_back(new DistanceConstraint(mParticles[1], mParticles[0]));
+
+	//addParticle(Eigen::Vector3d(0.3, -0.1, 0.0));
+	//addParticle(Eigen::Vector3d(0.3, -0.2, 0.0));
 }
 
 MyWorld::~MyWorld() {
@@ -74,9 +69,6 @@ void MyWorld::addParticle(Vector3d position) {
 
 	// Since current assumption is that each new particle will operate under a distance-based constraint from the previous
 	// particle, push its distance from the previous particle into the distances vector
-	double distance = sqrt((mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition).dot(
-		mParticles[mParticles.size() - 1]->mPosition - mParticles[mParticles.size() - 2]->mPosition));
-	distances.push_back(distance);
 
 	// Resize & initialize constraint parameter matrices
 	q.resize(q.rows() + 3, 1);
@@ -107,12 +99,15 @@ void MyWorld::addConstraint(Constraint* constraint) {
 	nConstraints++;
 }
 
+const Constraint* MyWorld::getConstraint(int index) {
+	return (const Constraint*)constraints[index];
+}
+
+int MyWorld::getNumConstraints() {
+	return nConstraints;
+}
+
 void MyWorld::simulate() {
-	// Replace the following code
-	/*
-	for (int i = 0; i < mParticles.size(); i++)
-	mParticles[i]->mPosition[1] -= 0.005;
-	*/
 	float tStep = 0.002;
 
 	updateForces();

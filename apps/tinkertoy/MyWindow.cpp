@@ -5,6 +5,7 @@
 #include "dart/gui/GLFuncs.h"
 
 #define KEY_MENU ('m')
+#define KEY_RESET ('r')
 #define KEY_SELECT ('s')
 #define KEY_INSERT_PARTICLE ('i')
 #define KEY_ADD_CONSTRAINT ('c')
@@ -37,6 +38,7 @@ MyWindow::MyWindow() : SimWindow() {
 
   mShowMenu = false;
   mKeyMenu = KEY_MENU;
+  mKeyReset = KEY_RESET;
   mKeySelect = KEY_SELECT;
   mKeyInsert = KEY_INSERT_PARTICLE;
   mKeyAddConstraint = KEY_ADD_CONSTRAINT;
@@ -69,25 +71,32 @@ void MyWindow::draw() {
   glDisable(GL_LIGHTING);
   mRI->setPenColor(Vector4d(0.3, 0.3, 0.3, 1.0));
   mRI->pushMatrix();
-  // Draw a circle
-  glBegin(GL_LINE_LOOP);
-  double rad = 3.14 / 180.0;
-  double radius = 0.2;
-  for (int i = 0; i < 360; i++) {
-    double angle = i * rad;
-    glVertex3d(radius * cos(angle), radius * sin(angle), 0.0);
+  
+
+  for (int i = 0; i < mWorld->getNumConstraints(); i++) {
+	  const Constraint *c = mWorld->getConstraint(i);
+	  if (c->type == Constraint::CONSTRAINT_CIRCLE) {
+		  // Draw a circle
+		  glBegin(GL_LINE_LOOP);
+		  double rad = 3.14 / 180.0;
+		  double radius = ((const CircleConstraint*)c)->mRadius;
+		  for (int j = 0; j < 360; j++) {
+			  double angle = j * rad;
+			  glVertex3d(radius * cos(angle), radius * sin(angle), 0.0);
+		  }
+		  glEnd();
+	  }
+	  else if (c->type == Constraint::CONSTRAINT_DISTANCE) {
+		  // Draw a line through the particles constrianed by distance
+		  const Particle *p1 = c->p;
+		  const Particle *p2 = ((const DistanceConstraint*)c)->p_other;
+		  glBegin(GL_LINES);
+		  glVertex3f(p1->mPosition[0], p1->mPosition[1], p1->mPosition[2]);
+		  glVertex3f(p2->mPosition[0], p2->mPosition[1], p2->mPosition[2]);
+		  glEnd();
+	  }
   }
-  glEnd();
-  // Draw lines through each vertex
-  // Still based on the assumption that all the vertices are operating under distance-based constraints
-  glBegin(GL_LINES);
-  for (int i = 0; i < mWorld->getNumParticles() - 1; i++) {
-	  Vector3d p1 = mWorld->getParticle(i)->mPosition;
-	  Vector3d p2 = mWorld->getParticle(i+1)->mPosition;
-	  glVertex3f(p1[0], p1[1], p1[2]);
-	  glVertex3f(p2[0], p2[1], p2[2]);
-  }
-  glEnd();
+
   mRI->popMatrix();
   glEnable(GL_LIGHTING);
 
@@ -99,17 +108,8 @@ void MyWindow::draw() {
   glColor3f(0.0,0.0,0.0);
   dart::gui::drawStringOnScreen(0.02f,0.02f,frame);
 
-  // Show menu, if enabled
-  if (mShowMenu) {
-	  showMenu(0.01f, 0.97f);
-  }
-  else {
-	  glColor3f(0.0, 0.0, 0.0);
-	  char menuBuff[16];
-	  sprintf(menuBuff, "Show Menu: \'%c\'", mKeyMenu);
-	  std::string s(menuBuff);
-	  dart::gui::drawStringOnScreen(0.01f, 0.97f, s);
-  }
+  // Show menu on screen
+  showMenu(0.01f, 0.97f);
 
   // Show current mode
   char modeBuffs[NUM_MODES][16] = { "SELECT", "INSERT", "ADD CONSTRAINT", "MOVE", "SPRING" };
@@ -120,17 +120,48 @@ void MyWindow::draw() {
 }
 
 void MyWindow::showMenu(float x, float y) {
-	char menu[16], sel[32], ins[32];
-	sprintf(menu, "Hide Menu: \'%c\'", mKeyMenu);
-	sprintf(sel, "Select: \'%c\'", mKeySelect);
-	sprintf(ins, "Insert particle: \'%c\'", mKeyInsert);
-	std::string m(menu);
-	std::string s(sel);
-	std::string i(ins);
-	glColor3f(0.0, 0.0, 0.0);
-	dart::gui::drawStringOnScreen(x, y, m);
-	dart::gui::drawStringOnScreen(x, y - 0.035f, s);
-	dart::gui::drawStringOnScreen(x, y - 0.07f, i);
+	char formatBuff[32], menuBuff[16], resBuff[32], selBuff[32], insBuff[32];
+	char lClickBuff[64];
+	if (mShowMenu) {
+		sprintf(formatBuff, "Action <MODE>: \'Key\'");
+		sprintf(menuBuff, "Hide Menu: \'%c\'", mKeyMenu);
+		sprintf(resBuff, "Reset World: \'%c\'", mKeyReset);
+		sprintf(selBuff, "Select Mode: \'%c\'", mKeySelect);
+		sprintf(insBuff, "Insert Mode: \'%c\'", mKeyInsert);
+		std::string f(formatBuff);
+		std::string m(menuBuff);
+		std::string r(resBuff);
+		std::string s(selBuff);
+		std::string i(insBuff);
+		float lineSpacing = 0.035f;
+		glColor3f(0.0, 0.0, 0.0);
+		dart::gui::drawStringOnScreen(x, y, m);
+		dart::gui::drawStringOnScreen(x, y - lineSpacing, r);
+		dart::gui::drawStringOnScreen(x, y - lineSpacing * 2, s);
+		dart::gui::drawStringOnScreen(x, y - lineSpacing * 3, i);
+
+		switch (mWinMode) {
+		case MODE_SELECT:
+			sprintf(lClickBuff, "Left Mouse: Select a particle");
+			break;
+		case MODE_INSERT_PARTICLE:
+			sprintf(lClickBuff, "Left Mouse: Insert a particle");
+			break;
+		case MODE_ADD_CONSTRAINT:
+			sprintf(lClickBuff, "Left Mouse: Choose second particle");
+			break;
+		default:
+			sprintf(lClickBuff, "");
+			break;
+		}
+		std::string lClick(lClickBuff);
+		dart::gui::drawStringOnScreen(0.6f, 0.97f, lClick);
+	}
+	else {
+		sprintf(menuBuff, "Show Menu: \'%c\'", mKeyMenu);
+		std::string m(menuBuff);
+		dart::gui::drawStringOnScreen(x, y, m);
+	}
 }
 
 void MyWindow::keyboard(unsigned char key, int x, int y) {
@@ -140,7 +171,7 @@ void MyWindow::keyboard(unsigned char key, int x, int y) {
 		if (mPlaying)
 			glutTimerFunc(mDisplayTimeout, refreshTimer, 0);
 		break;
-	case 'r':
+	case KEY_RESET:
 		mWorld->~MyWorld();
 		mWorld = new MyWorld();
 		mFrame = 0;

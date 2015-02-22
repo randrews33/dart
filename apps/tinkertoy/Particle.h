@@ -52,13 +52,14 @@ public:
 	typedef enum CONSTRAINT_TYPE {
 		CONSTRAINT_CIRCLE,
 		CONSTRAINT_DISTANCE,
-		CONSTRAINT_VECTOR
+		CONSTRAINT_VECTOR,
+		CONSTRAINT_PLANE
 	} ConstraintType;
 
 	const Particle * p;
 	ConstraintType type;
 
-	Constraint(Particle *p_in) : p(p_in) {}
+	Constraint(ConstraintType type, Particle *p_in) : type(type), p(p_in) {}
 	Constraint() {}
 
 	virtual double C() const = 0;
@@ -72,7 +73,7 @@ public:
 	double mRadius;
 	Eigen::Vector3d mCirclePos;
 
-	CircleConstraint(Particle *p_in, double radius, Eigen::Vector3d position) : Constraint(p_in) {
+	CircleConstraint(Particle *p_in, double radius, Eigen::Vector3d position) : Constraint(CONSTRAINT_CIRCLE, p_in) {
 		this->mRadius = radius;
 		this->mCirclePos = position;
 	}
@@ -85,10 +86,10 @@ public:
 
 class DistanceConstraint : public Constraint {
 public:
-	Particle *p_other;
+	const Particle *p_other;
 	double distance;
 
-	DistanceConstraint(Particle *p_in, Particle *p_other) : Constraint(p_in) {
+	DistanceConstraint(Particle *p_in, Particle *p_other) : Constraint(CONSTRAINT_DISTANCE, p_in) {
 		this->p_other = p_other;
 		this->distance = sqrt((p_in->mPosition - p_other->mPosition).dot(p_in->mPosition - p_other->mPosition));
 	}
@@ -104,7 +105,7 @@ public:
 	Eigen::Vector3d mNormal;
 	double mYPos;
 
-	PlaneConstraint(Particle *p_in, Eigen::Vector3d normal, double yPos) : Constraint(p_in) {
+	PlaneConstraint(Particle *p_in, Eigen::Vector3d normal, double yPos) : Constraint(CONSTRAINT_PLANE, p_in) {
 		this->mNormal = normal;
 		this->mYPos = yPos;
 	}

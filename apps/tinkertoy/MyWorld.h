@@ -33,6 +33,8 @@ public:
 	void applyConstraints();
 
 	void addConstraint(Constraint* constraint);
+	const Constraint* getConstraint(int index);
+	int getNumConstraints();
 
 protected:
 	std::vector<Particle*> mParticles;
@@ -50,11 +52,6 @@ protected:
 	Eigen::MatrixXd dC;
 
 	int nConstraints;
-
-	// Temporary, for storing distance values of distance-based constraints
-	// First value will correspond to second particle, because current assumption is that the
-	// first particle is NOT operating under a  distance-based but circle-based constraint
-	std::vector<double> distances;
 
 	std::vector<Constraint*> constraints;
 	std::vector< std::vector< int >> constraintTable;
