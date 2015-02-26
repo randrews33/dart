@@ -4,10 +4,12 @@
 #include "Particle.h"
 #include "dart/gui/GLFuncs.h"
 
+// Use space key to play or stop the motion
+#define KEY_SIM (' ')
 #define KEY_MENU ('m')
 #define KEY_RESET ('r')
-#define KEY_SELECT ('s')
-#define KEY_INSERT_PARTICLE ('i')
+#define KEY_SELECT ('1')
+#define KEY_INSERT_PARTICLE ('2')
 #define KEY_ADD_CONSTRAINT ('c')
 #define KEY_SPRING ('p')
 #define KEY_MOVE ('M')
@@ -56,7 +58,7 @@ void MyWindow::displayTimer(int _val) {
 	applyForce(mSelected, 80.0 * (mouse - mSelected->mPosition));
 	//	  std::cout << "Applying spring force" << std::endl;
   }
-  mWorld->simulate();
+  mWorld->simulate(mPlaying);
   glutPostRedisplay();
   mFrame++;
   if(mPlaying)
@@ -114,48 +116,57 @@ void MyWindow::draw() {
   // Show current mode
   char modeBuffs[NUM_MODES][16] = { "SELECT", "INSERT", "ADD CONSTRAINT", "MOVE", "SPRING" };
   std::string modeString(modeBuffs[mWinMode]);
-  dart::gui::drawStringOnScreen(0.85, 0.02, modeString);
+  dart::gui::drawStringOnScreen(0.72, 0.02, modeString);
 
   glEnable(GL_LIGHTING);
 }
 
 void MyWindow::showMenu(float x, float y) {
-	char formatBuff[32], menuBuff[16], resBuff[32], selBuff[32], insBuff[32];
-	char lClickBuff[64];
+	char formatBuff[32], menuBuff[16], simBuff[32], resBuff[32], selBuff[32], insBuff[32], springBuff[32];
+	char mouseBuff[16], lClickBuff[32];
+	std::vector<std::string> optionStrings;
 	if (mShowMenu) {
 		sprintf(formatBuff, "Action <MODE>: \'Key\'");
 		sprintf(menuBuff, "Hide Menu: \'%c\'", mKeyMenu);
+		sprintf(simBuff, "Simulate: \'SPACE\'");
 		sprintf(resBuff, "Reset World: \'%c\'", mKeyReset);
 		sprintf(selBuff, "Select Mode: \'%c\'", mKeySelect);
 		sprintf(insBuff, "Insert Mode: \'%c\'", mKeyInsert);
-		std::string f(formatBuff);
-		std::string m(menuBuff);
-		std::string r(resBuff);
-		std::string s(selBuff);
-		std::string i(insBuff);
+		sprintf(springBuff, "Add spring force: \'%c\'", mKeySpring);
+
+		optionStrings.push_back(std::string(formatBuff));
+		optionStrings.push_back(std::string(menuBuff));
+		optionStrings.push_back(std::string(simBuff));
+		optionStrings.push_back(std::string(resBuff));
+		optionStrings.push_back(std::string(selBuff));
+		if (!mPlaying) optionStrings.push_back(std::string(insBuff));
+		if (mSelected != NULL) optionStrings.push_back(std::string(springBuff));
+
 		float lineSpacing = 0.035f;
 		glColor3f(0.0, 0.0, 0.0);
-		dart::gui::drawStringOnScreen(x, y, m);
-		dart::gui::drawStringOnScreen(x, y - lineSpacing, r);
-		dart::gui::drawStringOnScreen(x, y - lineSpacing * 2, s);
-		dart::gui::drawStringOnScreen(x, y - lineSpacing * 3, i);
+		for (int i = 0; i < optionStrings.size(); i++) {
+			dart::gui::drawStringOnScreen(x, y - i * lineSpacing, optionStrings[i]);
+		}
 
+		sprintf(mouseBuff, "Left Mouse:");
 		switch (mWinMode) {
 		case MODE_SELECT:
-			sprintf(lClickBuff, "Left Mouse: Select a particle");
+			sprintf(lClickBuff, "Select a particle");
 			break;
 		case MODE_INSERT_PARTICLE:
-			sprintf(lClickBuff, "Left Mouse: Insert a particle");
+			sprintf(lClickBuff, "Insert a particle");
 			break;
 		case MODE_ADD_CONSTRAINT:
-			sprintf(lClickBuff, "Left Mouse: Choose second particle");
+			sprintf(lClickBuff, "Choose second particle");
 			break;
 		default:
 			sprintf(lClickBuff, "");
 			break;
 		}
+		std::string mouse(mouseBuff);
 		std::string lClick(lClickBuff);
-		dart::gui::drawStringOnScreen(0.6f, 0.97f, lClick);
+		dart::gui::drawStringOnScreen(0.65f, 0.97f, mouse);
+		dart::gui::drawStringOnScreen(0.65f, 0.935f, lClick);
 	}
 	else {
 		sprintf(menuBuff, "Show Menu: \'%c\'", mKeyMenu);
@@ -166,7 +177,7 @@ void MyWindow::showMenu(float x, float y) {
 
 void MyWindow::keyboard(unsigned char key, int x, int y) {
 	switch (key){
-	case ' ': // Use space key to play or stop the motion
+	case KEY_SIM:
 		mPlaying = !mPlaying;
 		if (mPlaying)
 			glutTimerFunc(mDisplayTimeout, refreshTimer, 0);
@@ -183,8 +194,13 @@ void MyWindow::keyboard(unsigned char key, int x, int y) {
 		mWinMode = MODE_SELECT;
 		break;
 	case KEY_INSERT_PARTICLE:
-		deselectClosest();
-		mWinMode = MODE_INSERT_PARTICLE;
+		if (!mPlaying) {
+			deselectClosest();
+			mWinMode = MODE_INSERT_PARTICLE;
+		}
+		else {
+			std::cout << "Exit simulation mode first!" << std::endl;
+		}
 		break;
 	case KEY_ADD_CONSTRAINT:
 		if (mSelected != NULL) {
@@ -260,10 +276,7 @@ void MyWindow::drag(int x, int y) {
   mMouseY = y;
 //  std::cout << "Drag by (" << deltaX << ", " << deltaY << ")" << std::endl;
   Vector3d mouse((x * 1.0 / GlutWindow::mWinWidth - 0.5) * (0.2 / 0.1875), (0.5 - y * 1.0 / GlutWindow::mWinHeight) * (0.2 / 0.25), 0.0);
-  if (!mPlaying && mSelected != NULL && !mSelected->mConstrained) {
-	  mSelected->mPosition = mouse;
-  }
-
+  
   glutPostRedisplay();
 }
 

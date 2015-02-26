@@ -43,7 +43,8 @@ void Particle::RK4(float tStep) {
 // Constraints class
 ////////////////////////////////////////
 double CircleConstraint::C() const {
-	return 0.5 * p->mPosition.dot(p->mPosition) - 0.5 * mRadius * mRadius;	// NEEDS TO TAKE INTO ACCOUNT THE POSITION OF THE CIRCLE
+	return 0.5 * p->mPosition.dot(p->mPosition) - p->mPosition.dot(mCirclePos)
+		+ 0.5 * mCirclePos.dot(mCirclePos) - 0.5 * (mRadius * mRadius);
 }
 
 double CircleConstraint::dC() const {
@@ -51,7 +52,7 @@ double CircleConstraint::dC() const {
 }
 
 Vector3d CircleConstraint::J(Particle *pq) const {
-	if (pq == p) return p->mPosition;
+	if (pq == p) return p->mPosition - mCirclePos;
 	else return Vector3d::Zero();
 }
 
@@ -80,27 +81,4 @@ Vector3d DistanceConstraint::dJ(Particle *pq) const {
 	if (pq == p) return p->mVelocity - p_other->mVelocity;
 	else if (pq == p_other) return p_other->mVelocity - p->mVelocity;
 	else return Vector3d::Zero();
-}
-
-double PlaneConstraint::C() const {
-	Vector3d g(p->mPosition[0], mYPos, p->mPosition[2]);		// Plane extends infinitely in X & Z directions
-	double mag = sqrt((p->mPosition - g).dot(p->mPosition - g));
-	return ((p->mPosition - g).dot(mNormal) / mag) - 1.0;
-}
-
-double PlaneConstraint::dC() const {
-	Vector3d g(p->mPosition[0], mYPos, p->mPosition[2]);
-	Vector3d proj = p->mPosition - g;											// Projection of a vector extending from some point on plane to particle with normal (expression simplified based on assumptions)
-	double mag2 = proj.dot(proj);
-	return ((p->mVelocity.dot(mNormal)) - ((proj.dot(p->mVelocity)) / mag2) * (proj.dot(mNormal)) / sqrt(mag2));
-}
-
-// TODO: finish
-Vector3d PlaneConstraint::J(Particle *p) const {
-	return Vector3d::Zero();
-}
-
-// TODO: finish
-Vector3d PlaneConstraint::dJ(Particle *p) const {
-	return Vector3d::Zero();
 }

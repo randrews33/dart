@@ -19,8 +19,6 @@ public:
 		mVelocity.setZero();
 		mAccumulatedForce.setZero();
 		mColor << 0.9, 0.2, 0.2, 1.0;
-
-		mConstrained = false;
 	}
 	virtual ~Particle() {}
 
@@ -43,8 +41,6 @@ public:
 	Eigen::Vector3d mAccumulatedForce;
 
 	Eigen::Vector4d mColor;
-
-	bool mConstrained;			// If this particle is constrained to any other particles ONLY
 };
 
 class Constraint {
@@ -92,22 +88,6 @@ public:
 	DistanceConstraint(Particle *p_in, Particle *p_other) : Constraint(CONSTRAINT_DISTANCE, p_in) {
 		this->p_other = p_other;
 		this->distance = sqrt((p_in->mPosition - p_other->mPosition).dot(p_in->mPosition - p_other->mPosition));
-	}
-
-	virtual double C() const override;
-	virtual double dC() const override;
-	virtual Eigen::Vector3d J(Particle *pq) const override;
-	virtual Eigen::Vector3d dJ(Particle *pq) const override;
-};
-
-class PlaneConstraint : public Constraint {
-public:
-	Eigen::Vector3d mNormal;
-	double mYPos;
-
-	PlaneConstraint(Particle *p_in, Eigen::Vector3d normal, double yPos) : Constraint(CONSTRAINT_PLANE, p_in) {
-		this->mNormal = normal;
-		this->mYPos = yPos;
 	}
 
 	virtual double C() const override;

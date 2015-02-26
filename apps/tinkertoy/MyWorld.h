@@ -25,18 +25,20 @@ public:
 	void addParticle(Eigen::Vector3d position);
 
 	// TODO: your simulation code goes here
-	void simulate();
-	void updateForces();
-	void resetForces();
-	void updateConstraintParams();
-	void calculateConstraints();
-	void applyConstraints();
+	void simulate(bool playing);
 
 	void addConstraint(Constraint* constraint);
 	const Constraint* getConstraint(int index);
 	int getNumConstraints();
 
 protected:
+	void updateForces(bool enableGravity);
+	void updateParticles(float tStep);
+	void resetForces();
+	void updateConstraintParams();
+	void calculateConstraints();
+	void applyConstraints();
+
 	std::vector<Particle*> mParticles;
 	const int mMaxParticles = 5;
 
